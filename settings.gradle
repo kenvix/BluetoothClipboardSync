@@ -1,0 +1,2 @@
+include ':app', ':utils'
+rootProject.name='BluetoothClipboardSync'
