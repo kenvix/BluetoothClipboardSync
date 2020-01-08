@@ -132,4 +132,5 @@
     <string name="title_my_favorite">我的收藏</string>
     <string name="prompt_wrong_auth">用户名或密码错误</string>
     <string name="title_recognize_result">识别结果</string>
+    <string name="no_bluetooth_device">此设备不支持蓝牙，无法使用本程序</string>
 </resources>

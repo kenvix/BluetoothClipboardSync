@@ -17,7 +17,7 @@ import android.view.ViewGroup;
 import com.kenvix.utils.log.Logging;
 import com.kenvix.utils.android.Invoker;
 
-public abstract class BaseFragment extends Fragment implements Logging {
+public abstract class BaseFragment extends Fragment implements Logging, BaseFragmentSupport {
     private String logTag;
 
     @Nullable
@@ -62,16 +62,4 @@ public abstract class BaseFragment extends Fragment implements Logging {
      * @param view
      */
     protected abstract void onInitialize(@NonNull View view);
-
-    /**
-     * 获取当前的 fragment 的 layout
-     * @return 范例： R.layout.fragment_forum
-     */
-    protected abstract int getFragmentContentLayout();
-
-    /**
-     * 获取当前的 fragment 所属 activity 的 fragment 容器的 ID
-     * @return 范例： R.id.main_fragment_container
-     */
-    public abstract int getBaseActivityContainer();
 }

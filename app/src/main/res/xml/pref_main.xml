@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.preference.PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory
+        android:title="设备">
+
+        <ListPreference
+            android:key="device_address"
+            android:title="选择设备"
+            android:summary="未连接任何设备，请先打开系统蓝牙设置与电脑配对，然后在此处选择你的电脑"
+            android:dialogMessage=""
+            android:defaultValue="-" />
+
+        <Preference
+            android:key="system_bluetooth_settings"
+            android:title="打开系统蓝牙设置" />
+
+        <Preference
+            android:key="system_bluetooth_settingsa"
+            android:title="工作模式"
+            android:summary="LE" />
+
+        <CheckBoxPreference
+            android:key="auto_start"
+            android:title="@string/title_auto_start"
+            android:summary="@string/desc_auto_start"
+            android:defaultValue="true"/>
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="@string/title_about">
+
+        <Preference
+            android:key="app_name"
+            android:title="@string/app_name"
+            android:summary="@string/app_version" />
+
+        <Preference
+            android:key="view_github"
+            android:title="@string/title_view_github"
+            android:summary="@string/summary_license" />
+
+        <Preference
+            android:key="author"
+            android:title="@string/title_author"
+            android:summary="@string/summary_author_blog" />
+    </PreferenceCategory>
+</androidx.preference.PreferenceScreen>
