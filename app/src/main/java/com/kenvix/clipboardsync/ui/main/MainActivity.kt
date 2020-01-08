@@ -14,7 +14,7 @@ class MainActivity : BaseActivity() {
 
     override fun onInitialize(savedInstanceState: Bundle?) {
         try {
-            settingFragment = SettingFragment()
+            settingFragment = SettingFragment(this)
 
             BluetoothUtils.tryEnableBluetoothDevice()
             BluetoothUtils.registerIntentFilter()

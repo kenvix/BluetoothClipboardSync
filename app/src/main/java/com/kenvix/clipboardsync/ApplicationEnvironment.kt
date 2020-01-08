@@ -3,7 +3,9 @@ package com.kenvix.clipboardsync
 import android.annotation.SuppressLint
 import android.app.Application
 import android.content.Context
+import android.content.SharedPreferences
 import android.graphics.drawable.Drawable
+import android.preference.PreferenceManager
 import androidx.annotation.NonNull
 import com.kenvix.utils.log.Logging
 import com.kenvix.utils.android.AndroidLoggingHandler
@@ -76,6 +78,9 @@ class ApplicationEnvironment : Application(), Logging {
         @JvmStatic
         val viewResources
             get() = appContext.resources
+
+        val defaultSharedPreferences: SharedPreferences
+            get() = PreferenceManager.getDefaultSharedPreferences(appContext)
 
         @JvmStatic
         lateinit var cachedThreadPool: ThreadPoolExecutor

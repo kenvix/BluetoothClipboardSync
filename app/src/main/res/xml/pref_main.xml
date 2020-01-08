@@ -1,30 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.preference.PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
     <PreferenceCategory
+        android:title="同步">
+
+        <CheckBoxPreference
+            android:key="enable_clipboard_sync"
+            android:title="开启剪贴板同步"
+            android:summary="未开启剪贴板同步"
+            android:defaultValue="false"/>
+
+        <CheckBoxPreference
+            android:key="enable_clipboard_notify"
+            android:title="当有新内容时显示通知"
+            android:summary="不显示"
+            android:defaultValue="false"/>
+    </PreferenceCategory>
+
+    <PreferenceCategory
         android:title="设备">
 
         <ListPreference
             android:key="device_address"
             android:title="选择设备"
             android:summary="未连接任何设备，请先打开系统蓝牙设置与电脑配对，然后在此处选择你的电脑"
-            android:dialogMessage=""
             android:defaultValue="-" />
+
+        <Preference
+            android:key="device_status"
+            android:title="当前状态"
+            android:summary="未连接" />
 
         <Preference
             android:key="system_bluetooth_settings"
             android:title="打开系统蓝牙设置" />
-
-        <Preference
-            android:key="system_bluetooth_settingsa"
-            android:title="工作模式"
-            android:summary="LE" />
-
-        <CheckBoxPreference
-            android:key="auto_start"
-            android:title="@string/title_auto_start"
-            android:summary="@string/desc_auto_start"
-            android:defaultValue="true"/>
-
     </PreferenceCategory>
 
     <PreferenceCategory
