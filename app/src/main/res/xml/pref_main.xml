@@ -4,6 +4,12 @@
         android:title="同步">
 
         <CheckBoxPreference
+            android:key="enable_sync"
+            android:title="开启同步 (总开关)"
+            android:summary="同步未开启，下面的选项不会生效"
+            android:defaultValue="true"/>
+
+        <CheckBoxPreference
             android:key="enable_clipboard_sync"
             android:title="开启剪贴板同步"
             android:summary="未开启剪贴板同步"

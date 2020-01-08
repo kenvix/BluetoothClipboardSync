@@ -23,6 +23,9 @@ import androidx.preference.ListPreference
 import com.kenvix.clipboardsync.ApplicationEnvironment
 import com.kenvix.clipboardsync.preferences.MainPreferences
 import com.kenvix.clipboardsync.service.BluetoothUtils
+import com.kenvix.utils.android.exceptionIgnored
+import com.kenvix.utils.android.printDebug
+import java.lang.IllegalArgumentException
 
 
 class SettingFragment internal constructor(private val activity: MainActivity): PreferenceFragmentCompat() {
@@ -31,27 +34,45 @@ class SettingFragment internal constructor(private val activity: MainActivity): 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        preferenceManager.sharedPreferencesName = MainPreferences.name
-        preferenceManager.sharedPreferencesMode = MainPreferences.mode
+        MainPreferences.applyToPreferenceManager(preferenceManager)
     }
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         addPreferencesFromResource(R.xml.pref_main)
 
         devicesListPreference = findPreference("device_address")!!
+        if (MainPreferences.deviceMacAddress.isNotBlank()) {
+            devicesListPreference.summary = "${MainPreferences.deviceName} (${MainPreferences.deviceMacAddress})"
+        }
+
         devicesListPreference.setOnPreferenceClickListener {
             bluetoothDevices = BluetoothUtils.bondedDevices.filter(::deviceFilter).toTypedArray()
 
-            devicesListPreference.entries = bluetoothDevices.map<BluetoothDevice, CharSequence> {
-                "${it.name} (${it.address})"
-            }.toTypedArray()
-            devicesListPreference.entryValues = bluetoothDevices.indices.map { it.toString() }.toTypedArray()
+            devicesListPreference.entries = Array<CharSequence?>(bluetoothDevices.size) { null }
+            devicesListPreference.entryValues = Array<CharSequence?>(bluetoothDevices.size) { null }
+
+            bluetoothDevices.forEachIndexed { index, data ->
+                devicesListPreference.entries[index] = "${data.name} (${data.address})"
+                devicesListPreference.entryValues[index] = index.toString()
+
+                if (data.address == MainPreferences.deviceMacAddress)
+                    setDeviceIndex(index, data.name, data.address)
+            }
 
             true
         }
         devicesListPreference.setOnPreferenceChangeListener { _, newValue ->
+            context?.exceptionIgnored {
+                val index = Integer.parseInt(newValue as String)
+                val selection = bluetoothDevices[index]
 
+                MainPreferences.deviceMacAddress = selection.address
+                MainPreferences.deviceName = selection.name
+                MainPreferences.deviceUUID = selection.uuids[0].uuid.toString()
+
+                MainPreferences.commit()
+                setDeviceIndex(index, selection.name, selection.address)
+            }
 
             false
         }
@@ -88,6 +109,11 @@ class SettingFragment internal constructor(private val activity: MainActivity): 
         }
 
         return true
+    }
+
+    private fun setDeviceIndex(index: Int, name: String, address: String) {
+        devicesListPreference.setValueIndex(index)
+        devicesListPreference.summary = "$name ($address)"
     }
 
     private fun deviceFilter(device: BluetoothDevice): Boolean

@@ -1,6 +1,7 @@
 package com.kenvix.clipboardsync.ui.base;
 
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.view.View;
 import android.widget.Toast;
 
@@ -83,6 +84,10 @@ public class BaseActivityUI {
     }
 
     public AlertDialog.Builder getAlertBuilder(String text, @Nullable String title, @Nullable Consumer<Boolean> callback) {
+        return getAlertBuilder(context, text, title, callback);
+    }
+
+    public static AlertDialog.Builder getAlertBuilder(Context context, String text, @Nullable String title, @Nullable Consumer<Boolean> callback) {
         AlertDialog.Builder builder = new AlertDialog.Builder(context)
                 .setMessage(text)
                 .setOnCancelListener(dialog -> {
