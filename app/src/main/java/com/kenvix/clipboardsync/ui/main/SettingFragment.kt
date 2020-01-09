@@ -25,10 +25,11 @@ import com.kenvix.clipboardsync.preferences.MainPreferences
 import com.kenvix.clipboardsync.service.BluetoothUtils
 import com.kenvix.utils.android.exceptionIgnored
 import com.kenvix.utils.android.printDebug
+import com.kenvix.utils.log.Logging
 import java.lang.IllegalArgumentException
 
 
-class SettingFragment internal constructor(private val activity: MainActivity): PreferenceFragmentCompat() {
+class SettingFragment internal constructor(private val activity: MainActivity): PreferenceFragmentCompat(), Logging {
     private lateinit var devicesListPreference: ListPreference
     private lateinit var bluetoothDevices: Array<BluetoothDevice>
 
@@ -72,6 +73,7 @@ class SettingFragment internal constructor(private val activity: MainActivity): 
 
                 MainPreferences.commit()
                 setDeviceIndex(index, selection.name, selection.address)
+                logger.fine("Using device: Address ${selection.address} | Name ${selection.name} | Type ${selection.type} | ${selection.bondState} | UUID ${MainPreferences.deviceUUID}")
             }
 
             false
@@ -99,6 +101,9 @@ class SettingFragment internal constructor(private val activity: MainActivity): 
         }
         findPreference<Preference>("view_github")?.setOnPreferenceClickListener { openURL("https://github.com/kenvix/BluetoothClipboardSync") }
         findPreference<Preference>("author")?.setOnPreferenceClickListener { openURL("https://kenvix.com") }
+        findPreference<Preference>("device_status")?.setOnPreferenceClickListener {
+            false
+        }
     }
 
     private fun openURL(url: String): Boolean {
@@ -118,4 +123,6 @@ class SettingFragment internal constructor(private val activity: MainActivity): 
 
     private fun deviceFilter(device: BluetoothDevice): Boolean
         = device.bluetoothClass.majorDeviceClass == BluetoothClass.Device.Major.COMPUTER
+
+    override fun getLogTag(): String = "SettingsActivity"
 }

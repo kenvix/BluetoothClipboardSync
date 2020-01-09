@@ -3,7 +3,7 @@
     <PreferenceCategory
         android:title="同步">
 
-        <CheckBoxPreference
+        <SwitchPreference
             android:key="enable_sync"
             android:title="开启同步 (总开关)"
             android:summary="同步未开启，下面的选项不会生效"
