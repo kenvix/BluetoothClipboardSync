@@ -16,10 +16,18 @@ public final class ApplicationProperties {
     public static final byte BluetoothSyncClipboardSuccess = 0x12;
     public static final byte BluetoothSyncClipboardError = 0x13;
 
+    public static final int MinGzipCompressSize = 256;
+
     public static final long OkHttpClientTimeout = 10;
     public static final long OkHttpClientCacheSize = 1000000000L;
 
     public static String getServerApiUrl(String path) {
         return BaseServerUrl + path;
+    }
+
+    public static class BluetoothOption {
+        public static final byte None       = 0b00000000;
+        public static final byte Compressed = 0b00000001;
+        public static final byte Partal     = 0b00000010;
     }
 }
