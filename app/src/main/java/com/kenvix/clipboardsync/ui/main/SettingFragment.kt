@@ -6,32 +6,35 @@
 
 package com.kenvix.clipboardsync.ui.main
 
-import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothClass
 import android.bluetooth.BluetoothDevice
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
+import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
+import com.google.gson.Gson
 import com.kenvix.clipboardsync.R
-import java.util.*
-import android.content.ActivityNotFoundException
-import android.provider.Settings
-import androidx.preference.ListPreference
-import com.kenvix.clipboardsync.ApplicationEnvironment
 import com.kenvix.clipboardsync.preferences.MainPreferences
 import com.kenvix.clipboardsync.service.BluetoothUtils
+import com.kenvix.clipboardsync.service.SyncService
 import com.kenvix.utils.android.exceptionIgnored
-import com.kenvix.utils.android.printDebug
+import com.kenvix.utils.android.startService
 import com.kenvix.utils.log.Logging
-import java.lang.IllegalArgumentException
+import com.kenvix.utils.log.finest
+import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
+import java.util.*
 
 
 class SettingFragment internal constructor(private val activity: MainActivity): PreferenceFragmentCompat(), Logging {
     private lateinit var devicesListPreference: ListPreference
     private lateinit var bluetoothDevices: Array<BluetoothDevice>
+    private var selectedDevice: BluetoothDevice? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,7 +46,12 @@ class SettingFragment internal constructor(private val activity: MainActivity): 
 
         devicesListPreference = findPreference("device_address")!!
         if (MainPreferences.deviceMacAddress.isNotBlank()) {
-            devicesListPreference.summary = "${MainPreferences.deviceName} (${MainPreferences.deviceMacAddress})"
+            try {
+                selectedDevice = Gson().fromJson(MainPreferences.deviceData, BluetoothDevice::class.java)
+                devicesListPreference.summary = "${MainPreferences.deviceName} (${MainPreferences.deviceMacAddress})"
+            } catch (e: Exception) {
+                resetDevicePreference()
+            }
         }
 
         devicesListPreference.setOnPreferenceClickListener {
@@ -70,6 +78,8 @@ class SettingFragment internal constructor(private val activity: MainActivity): 
                 MainPreferences.deviceMacAddress = selection.address
                 MainPreferences.deviceName = selection.name
                 MainPreferences.deviceUUID = selection.uuids[0].uuid.toString()
+                MainPreferences.deviceData = Gson().toJson(selection)
+                selectedDevice = selection
 
                 MainPreferences.commit()
                 setDeviceIndex(index, selection.name, selection.address)
@@ -102,8 +112,20 @@ class SettingFragment internal constructor(private val activity: MainActivity): 
         findPreference<Preference>("view_github")?.setOnPreferenceClickListener { openURL("https://github.com/kenvix/BluetoothClipboardSync") }
         findPreference<Preference>("author")?.setOnPreferenceClickListener { openURL("https://kenvix.com") }
         findPreference<Preference>("device_status")?.setOnPreferenceClickListener {
+            if (selectedDevice != null) {
+                SyncService.startService(activity, selectedDevice!!)
+            }
             false
         }
+    }
+
+    private fun resetDevicePreference() {
+        selectedDevice = null
+        MainPreferences.deviceData = ""
+        MainPreferences.deviceName = ""
+        MainPreferences.deviceMacAddress = ""
+        MainPreferences.deviceUUID = ""
+        MainPreferences.commit()
     }
 
     private fun openURL(url: String): Boolean {
