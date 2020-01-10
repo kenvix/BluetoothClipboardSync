@@ -25,6 +25,20 @@
         </activity>
 
         <service android:name=".service.SyncService" />
+
+        <receiver android:name=".service.BluetoothBroadcastReceiver" >
+            <intent-filter>
+                <action android:name="android.bluetooth.BluetoothAdapter.ACTION_FOUND" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.bluetooth.BluetoothAdapter.ACTION_DISCOVERY_FINISHED" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.bluetooth.BluetoothAdapter.ACTION_DISCOVERY_STARTED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

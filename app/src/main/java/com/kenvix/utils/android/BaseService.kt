@@ -4,7 +4,7 @@
 // Written by Kenvix <i@kenvix.com>
 //--------------------------------------------------
 
-package com.kenvix.clipboardsync.service
+package com.kenvix.utils.android
 
 import android.app.Service
 import com.kenvix.utils.log.Logging

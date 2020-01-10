@@ -6,12 +6,14 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.graphics.drawable.Drawable
 import android.preference.PreferenceManager
+import android.util.Log
 import androidx.annotation.NonNull
 import com.kenvix.utils.log.Logging
 import com.kenvix.utils.android.AndroidLoggingHandler
 import okhttp3.Cache
 import okhttp3.OkHttpClient
 import java.util.*
+import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.SynchronousQueue
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
@@ -110,7 +112,13 @@ class ApplicationEnvironment : Application(), Logging {
         logger.finer("Application Initialized")
 
         cachedThreadPool = ThreadPoolExecutor(1, 20,
-                60L, TimeUnit.SECONDS, SynchronousQueue<Runnable>())
+                60L, TimeUnit.SECONDS, LinkedBlockingQueue<Runnable>()
+        )
+        cachedThreadPool.setRejectedExecutionHandler { r: Runnable?, executor: ThreadPoolExecutor? ->
+            logger.severe("GlobalThreadPool: ${executor.toString()}")
+
+        }
+
         timer = Timer()
     }
 }

@@ -21,23 +21,10 @@ object BluetoothUtils {
     }
 
     val bondedDevices get() = bluetoothAdapter.bondedDevices
-    private val receiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-
-        }
-    }
 
     fun tryEnableBluetoothDevice() {
         if (!bluetoothAdapter.isEnabled) {
             bluetoothAdapter.enable()
         }
-    }
-
-    fun registerIntentFilter() {
-        val intentFilter = IntentFilter()
-        intentFilter.addAction(BluetoothDevice.ACTION_FOUND) //发现设备
-        intentFilter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED) //扫描完毕
-        intentFilter.addAction(BluetoothAdapter.ACTION_DISCOVERY_STARTED) //扫描结束
-        ApplicationEnvironment.appContext.registerReceiver(receiver, intentFilter)
     }
 }

@@ -39,6 +39,7 @@
         <Preference
             android:key="system_bluetooth_settings"
             android:title="打开系统蓝牙设置" />
+
     </PreferenceCategory>
 
     <PreferenceCategory

@@ -11,6 +11,7 @@ public final class ApplicationProperties {
 
     public static final byte BluetoothSyncPing = 0x01;
     public static final byte BluetoothSyncPong = 0x02;
+    public static final byte BluetoothSyncHello = 0x03;
 
     public static final byte BluetoothSyncUpdateClipboard = 0x11;
     public static final byte BluetoothSyncClipboardSuccess = 0x12;

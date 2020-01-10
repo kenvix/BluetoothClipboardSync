@@ -17,12 +17,6 @@ class MainActivity : BaseActivity() {
             settingFragment = SettingFragment(this)
 
             BluetoothUtils.tryEnableBluetoothDevice()
-            BluetoothUtils.registerIntentFilter()
-            val devies = BluetoothUtils.bondedDevices
-            devies.forEach {
-                logger.fine("Address ${it.address} | Name ${it.name} | Type ${it.type} | ${it.bondState} | UUID ${it.uuids}")
-            }
-
             setForegroundFragment(baseContainer, settingFragment)
         } catch (e: EnvironmentNotSatisfiedException) {
             ui.showAlertDialog(getString(R.string.no_bluetooth_device)) {
