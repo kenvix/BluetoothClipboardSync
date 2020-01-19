@@ -23,6 +23,7 @@ import androidx.core.app.RemoteInput
 import androidx.core.content.ContextCompat.getSystemService
 import com.kenvix.clipboardsync.ApplicationProperties
 import com.kenvix.clipboardsync.R
+import com.kenvix.clipboardsync.preferences.MainPreferences
 import com.kenvix.utils.android.BaseService
 import com.kenvix.utils.android.ServiceBinder
 import com.kenvix.utils.log.severe
@@ -47,7 +48,9 @@ class SyncService : BaseService() {
     private lateinit var dataInputStream: DataInputStream
     private lateinit var communicator: RfcommCommunicator
     private lateinit var notificationManager: NotificationManager
-    private lateinit var notification: Notification
+    private lateinit var serviceNotificationBuilder: NotificationCompat.Builder
+    private lateinit var serviceInbox: NotificationCompat.InboxStyle
+    private var emergencyNotificationCounter = 0
 
     var onStatusChangedListener: ((status: ServiceStatus, bluetoothDevice: BluetoothDevice) -> Unit)? =
         null
@@ -77,32 +80,32 @@ class SyncService : BaseService() {
                 PendingIntent.FLAG_ONE_SHOT
         )
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val actionSendMessage = NotificationCompat.Action.Builder(
-                    android.R.drawable.sym_def_app_icon,
-                    getString(R.string.send_message_to_pc),
-                    sendPendingIntent
-                )
-                .addRemoteInput(
-                    RemoteInput.Builder("message")
-                        .setLabel(getString(R.string.send_message_to_pc)).build()
-                )
-                .build()
+        val actionSendMessage = NotificationCompat.Action.Builder(
+            android.R.drawable.sym_def_app_icon,
+            getString(R.string.send_message_to_pc),
+            sendPendingIntent
+        )
+            .addRemoteInput(
+                RemoteInput.Builder("message")
+                    .setLabel(getString(R.string.send_message_to_pc)).build()
+            )
+            .build()
 
-            val actionStop = NotificationCompat.Action.Builder(
-                    android.R.drawable.sym_def_app_icon,
-                    getString(R.string.stop),
-                    sendPendingIntent
-                )
-                .build()
+        val actionStop = NotificationCompat.Action.Builder(
+            android.R.drawable.sym_def_app_icon,
+            getString(R.string.stop),
+            sendPendingIntent
+        )
+            .build()
 
-            val notificationBuilder = createServiceNotification()
-                .addAction(actionSendMessage)
-                .addAction(actionStop)
+        serviceInbox = NotificationCompat.InboxStyle()
+        val notificationBuilder = createServiceNotification()
+            .setStyle(serviceInbox)
+            .addAction(actionSendMessage)
+            .addAction(actionStop)
 
-            notification = notificationBuilder.build()
-            startForeground(ServiceNotificationID, notification)
-        }
+        serviceNotificationBuilder = notificationBuilder
+        startForeground(ServiceNotificationID, serviceNotificationBuilder.build())
     }
 
 
@@ -133,29 +136,35 @@ class SyncService : BaseService() {
                             val data = communicator.readData()
 
                             when (data.type) {
-                                ApplicationProperties.BluetoothSyncPing -> {
+                                RfcommFrame.TypePing -> {
                                     if (data.length > 0)
                                         sendData(
-                                            ApplicationProperties.BluetoothSyncPong,
+                                            RfcommFrame.TypePong,
                                             0,
                                             data.data
                                         )
                                     else
-                                        sendData(ApplicationProperties.BluetoothSyncPong)
+                                        sendData(RfcommFrame.TypePong)
                                 }
 
-                                ApplicationProperties.BluetoothSyncUpdateClipboard -> {
-                                    sendData(ApplicationProperties.BluetoothSyncClipboardSuccess)
-                                }
-
-                                ApplicationProperties.BluetoothSyncEmergency -> {
+                                RfcommFrame.TypeUpdateClipboard -> {
                                     if (data.data != null)
+                                        onReceiveClipboard(String(data.data))
+
+                                    sendData(RfcommFrame.TypeUpdateClipboard, RfcommFrame.OptionMessageSuccess)
+                                }
+
+                                RfcommFrame.TypeEmergency -> {
+                                    if (data.data != null) {
+                                        emergencyNotificationCounter = (emergencyNotificationCounter + 1) % MainPreferences.maxEmergencyNotificationNum
+
                                         notificationManager.notify(
-                                            0xA2,
+                                            EmergencyNotificationBaseID + emergencyNotificationCounter,
                                             createEmergencyNotification(String(data.data)).build()
                                         )
+                                    }
 
-                                    sendData(ApplicationProperties.BluetoothSyncClipboardSuccess)
+                                    sendData(RfcommFrame.TypeEmergency, RfcommFrame.OptionMessageSuccess)
                                 }
 
                                 else -> logger.warning("Unknown bluetooth data type ${data.type}")
@@ -228,8 +237,14 @@ class SyncService : BaseService() {
         }
     }
 
+    private fun onReceiveClipboard(data: String) {
+        serviceInbox.addLine(data)
+        notificationManager.notify(ServiceNotificationID, serviceNotificationBuilder.build())
+    }
+
     companion object Utils {
-        const val ServiceNotificationID = 0xA1
+        const val ServiceNotificationID       = 0xA1
+        const val EmergencyNotificationBaseID = 0x30
 
         fun startService(context: ContextWrapper) {
             val intent = Intent(context, SyncService::class.java)
@@ -265,8 +280,8 @@ class SyncService : BaseService() {
             channelE.enableLights(true)
 
             //向系统注册通知渠道，注册后不能改变重要性以及其他通知行为
-            notificationManager?.createNotificationChannel(channel)
-            notificationManager?.createNotificationChannel(channelE)
+            notificationManager.createNotificationChannel(channel)
+            notificationManager.createNotificationChannel(channelE)
         }
     }
 
@@ -276,7 +291,7 @@ class SyncService : BaseService() {
         val builder = NotificationCompat.Builder(this, this.getString(R.string.service_sync))
         builder
             .setContentTitle(this.getString(R.string.service_sync)) //设置通知标题
-            .setContentText("收到的消息将会显示在此处。点击可发送消息") //设置通知内容
+            .setContentText(getString(R.string.service_notification_default)) //设置通知内容
             .setAutoCancel(true) //用户触摸时，自动关闭
             .setWhen(System.currentTimeMillis())
             .setSmallIcon(R.drawable.ic_server_3)
@@ -287,6 +302,8 @@ class SyncService : BaseService() {
 
         return builder
     }
+
+    private fun updateServiceNotification() = notificationManager.notify(ServiceNotificationID, serviceNotificationBuilder.build())
 
     private fun createEmergencyNotification(text: String): NotificationCompat.Builder {
         val builder =

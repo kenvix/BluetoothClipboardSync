@@ -14,7 +14,7 @@ import com.kenvix.clipboardsync.ApplicationEnvironment
 /**
  * 启动服务
  */
-fun ContextWrapper.startService(serviceClass: Class<*>) {
+fun Context.startService(serviceClass: Class<*>) {
     val intent = Intent(this, serviceClass)
     this.startService(intent)
 }
@@ -23,7 +23,7 @@ fun ContextWrapper.startService(serviceClass: Class<*>) {
  * 在线程池启动服务
  */
 @JvmOverloads
-fun ContextWrapper.startServiceInThreadPool(serviceClass: Class<*>, onException: (exception: Exception) -> Unit = { throw it }) {
+fun Context.startServiceInThreadPool(serviceClass: Class<*>, onException: (exception: Exception) -> Unit = { throw it }) {
     ApplicationEnvironment.cachedThreadPool.execute {
         try {
             startService(serviceClass)
@@ -36,7 +36,7 @@ fun ContextWrapper.startServiceInThreadPool(serviceClass: Class<*>, onException:
 /**
  * 停止服务
  */
-fun ContextWrapper.stopService(serviceClass: Class<*>): Boolean {
+fun Context.stopService(serviceClass: Class<*>): Boolean {
     val intent = Intent(this, serviceClass)
     return this.stopService(intent)
 }
@@ -45,7 +45,7 @@ fun ContextWrapper.stopService(serviceClass: Class<*>): Boolean {
  * 连接服务
  */
 @JvmOverloads
-fun ContextWrapper.bindService(serviceClass: Class<*>, connection: ServiceConnection, flags: Int = BIND_AUTO_CREATE): Boolean {
+fun Context.bindService(serviceClass: Class<*>, connection: ServiceConnection, flags: Int = BIND_AUTO_CREATE): Boolean {
     val intent = Intent(this, serviceClass)
     return bindService(intent, connection, flags)
 }

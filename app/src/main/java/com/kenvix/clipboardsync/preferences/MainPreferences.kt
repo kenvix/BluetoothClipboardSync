@@ -9,4 +9,7 @@ object MainPreferences : ManagedPreferences("main") {
     var deviceUUID: String by preferenceOf("device_uuid", "")
     var deviceName: String by preferenceOf("device_name", "")
     var deviceMacAddress: String by preferenceOf("device_mac_address", "")
+
+    var maxEmergencyNotificationNum: Int by preferenceOf("maxEmergencyNotificationNum", 20)
+    var minGzipCompressSize: Int by preferenceOf("MinGzipCompressSize", 256)
 }

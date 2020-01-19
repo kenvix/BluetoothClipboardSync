@@ -1,11 +1,14 @@
 package com.kenvix.clipboardsync.service
 
 import com.kenvix.clipboardsync.ApplicationProperties
+import com.kenvix.clipboardsync.preferences.MainPreferences
 import com.kenvix.utils.android.GzipCompressUtils
 import com.kenvix.utils.log.Logging
 import com.kenvix.utils.log.severe
 import java.io.DataInputStream
 import java.io.DataOutputStream
+import kotlin.experimental.and
+import kotlin.experimental.or
 
 class RfcommCommunicator(private val dataInputStream: DataInputStream, private val dataOutputStream: DataOutputStream) {
     fun writeData(type: Byte, options: Byte = 0, data: ByteArray? = null) {
@@ -13,11 +16,18 @@ class RfcommCommunicator(private val dataInputStream: DataInputStream, private v
 
         if (data != null) {
             dataOutputStream.writeInt(data.size)
+            var option = options
 
-            if (data.size > ApplicationProperties.MinGzipCompressSize)
-                dataOutputStream.write(GzipCompressUtils.compress(data))
-            else
-                dataOutputStream.write(data)
+            //Compress determine
+            val outputData = if (data.size > MainPreferences.minGzipCompressSize) {
+                    option = option or RfcommFrame.OptionCompressed
+                    GzipCompressUtils.compress(data)
+                } else {
+                    data
+                }
+
+            dataOutputStream.writeByte(option as Int)
+            dataOutputStream.write(outputData)
         } else {
             dataOutputStream.writeInt(0)
         }
@@ -37,7 +47,7 @@ class RfcommCommunicator(private val dataInputStream: DataInputStream, private v
             data = ByteArray(length.toInt())
             dataInputStream.readFully(data)
 
-            if (length > ApplicationProperties.MinGzipCompressSize)
+            if (option and RfcommFrame.OptionCompressed > 0)
                 data = GzipCompressUtils.decompress(data, length.toInt())
         }
 
