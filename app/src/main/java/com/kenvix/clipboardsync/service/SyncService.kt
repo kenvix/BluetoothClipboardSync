@@ -25,13 +25,13 @@ import com.kenvix.clipboardsync.ApplicationProperties
 import com.kenvix.clipboardsync.R
 import com.kenvix.clipboardsync.broadcast.SendMessageBroadcast
 import com.kenvix.clipboardsync.broadcast.SyncServiceStateBroadcast
+import com.kenvix.clipboardsync.feature.bluetooth.RfcommCommunicator
+import com.kenvix.clipboardsync.feature.bluetooth.RfcommFrame
 import com.kenvix.clipboardsync.preferences.MainPreferences
 import com.kenvix.utils.android.BaseService
 import com.kenvix.utils.android.ServiceBinder
 import com.kenvix.utils.log.finest
 import com.kenvix.utils.log.severe
-import com.kenvix.utils.log.warning
-import com.kenvix.utils.tools.CommonTools
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.IOException
@@ -46,15 +46,18 @@ class SyncService : BaseService() {
     private lateinit var syncThreadExecutor: ExecutorService
     private lateinit var bluetoothAdapter: BluetoothAdapter
     private lateinit var bluetoothServerSocket: BluetoothServerSocket
-    private lateinit var bluetoothSocket: BluetoothSocket
-    private lateinit var bluetoothDevice: BluetoothDevice
-    private lateinit var dataOutputStream: DataOutputStream
-    private lateinit var dataInputStream: DataInputStream
-    private lateinit var communicator: RfcommCommunicator
+
+    private var bluetoothSocket: BluetoothSocket? = null
+    private var bluetoothDevice: BluetoothDevice? = null
+    private var dataOutputStream: DataOutputStream? = null
+    private var dataInputStream: DataInputStream? = null
+    private var communicator: RfcommCommunicator? = null
+
     private lateinit var notificationManager: NotificationManager
     private lateinit var serviceNotificationBuilder: NotificationCompat.Builder
     private lateinit var serviceInbox: NotificationCompat.InboxStyle
     private var emergencyNotificationCounter = 0
+    private var continuousFailCounter = 0
 
     var onStatusChangedListener: ((status: ServiceStatus, bluetoothDevice: BluetoothDevice) -> Unit)? =
         null
@@ -64,8 +67,8 @@ class SyncService : BaseService() {
     @Volatile
     private var status: ServiceStatus = ServiceStatus.Stopped
         set(value) {
-            if (this::bluetoothDevice.isInitialized)
-                onStatusChangedListener?.invoke(value, bluetoothDevice)
+            if (bluetoothDevice != null)
+                onStatusChangedListener?.invoke(value, bluetoothDevice!!)
 
             SyncServiceStateBroadcast.sendBroadcast(this, value)
             field = value
@@ -80,10 +83,10 @@ class SyncService : BaseService() {
         val sendIntent = Intent(this, SendMessageBroadcast::class.java)
         sendIntent.putExtra("is_from_notification", true)
         val sendPendingIntent = PendingIntent.getBroadcast(
-                this,
-                0xA2,
-                sendIntent,
-                PendingIntent.FLAG_ONE_SHOT
+            this,
+            0xA2,
+            sendIntent,
+            PendingIntent.FLAG_ONE_SHOT
         )
 
         val actionSendMessage = NotificationCompat.Action.Builder(
@@ -114,7 +117,7 @@ class SyncService : BaseService() {
         startForeground(ServiceNotificationID, serviceNotificationBuilder.build())
     }
 
-    enum class ServiceStatus { Stopped, Starting, StartedButNoDeviceConnected, DeviceConnected }
+    enum class ServiceStatus { Stopped, Starting, StartedButNoDeviceConnected, DeviceConnected, TemporaryError }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (status == ServiceStatus.Stopped) {
@@ -137,44 +140,64 @@ class SyncService : BaseService() {
                     while (keepConnection) {
                         try {
                             connectDevice()
-                            val data = communicator.readData()
+                            val data = communicator?.readData()
 
-                            when (data.type) {
-                                RfcommFrame.TypePing -> {
-                                    if (data.length > 0)
+                            if (data != null) {
+                                when (data.type) {
+                                    RfcommFrame.TypePing -> {
+                                        if (data.length > 0)
+                                            sendData(
+                                                RfcommFrame.TypePong,
+                                                0,
+                                                data.data
+                                            )
+                                        else
+                                            sendData(RfcommFrame.TypePong)
+                                    }
+
+                                    RfcommFrame.TypeUpdateClipboard -> {
+                                        if (data.data != null)
+                                            onReceiveClipboard(String(data.data))
+
                                         sendData(
-                                            RfcommFrame.TypePong,
-                                            0,
-                                            data.data
-                                        )
-                                    else
-                                        sendData(RfcommFrame.TypePong)
-                                }
-
-                                RfcommFrame.TypeUpdateClipboard -> {
-                                    if (data.data != null)
-                                        onReceiveClipboard(String(data.data))
-
-                                    sendData(RfcommFrame.TypeUpdateClipboard, RfcommFrame.OptionMessageSuccess)
-                                }
-
-                                RfcommFrame.TypeEmergency -> {
-                                    if (data.data != null) {
-                                        emergencyNotificationCounter = (emergencyNotificationCounter + 1) % MainPreferences.maxEmergencyNotificationNum
-
-                                        notificationManager.notify(
-                                            EmergencyNotificationBaseID + emergencyNotificationCounter,
-                                            createEmergencyNotification(String(data.data)).build()
+                                            RfcommFrame.TypeUpdateClipboard,
+                                            RfcommFrame.OptionMessageSuccess
                                         )
                                     }
 
-                                    sendData(RfcommFrame.TypeEmergency, RfcommFrame.OptionMessageSuccess)
-                                }
+                                    RfcommFrame.TypeEmergency -> {
+                                        if (data.data != null) {
+                                            emergencyNotificationCounter =
+                                                (emergencyNotificationCounter + 1) % MainPreferences.maxEmergencyNotificationNum
 
-                                else -> logger.warning("Unknown bluetooth data type ${data.type}")
+                                            notificationManager.notify(
+                                                EmergencyNotificationBaseID + emergencyNotificationCounter,
+                                                createEmergencyNotification(String(data.data)).build()
+                                            )
+                                        }
+
+                                        sendData(
+                                            RfcommFrame.TypeEmergency,
+                                            RfcommFrame.OptionMessageSuccess
+                                        )
+                                    }
+
+                                    else -> logger.warning("Unknown bluetooth data type ${data.type}")
+                                }
                             }
                         } catch (e: IOException) {
-                            logger.warning(e)
+                            continuousFailCounter++
+
+                            if (continuousFailCounter < 5) {
+                                logger.warning("Detected IOException when receiving message continuous fail $continuousFailCounter times, will try again: ${e.message}")
+                            } else {
+                                status = ServiceStatus.TemporaryError
+                                logger.warning("IOException too many times, force disconnect.")
+                                continuousFailCounter = 0
+                                disconnectDevice()
+                            }
+                        } catch (e: Exception) {
+                            logger.severe(e, "Connect device failed")
                         }
                     }
                 } catch (e: java.lang.Exception) {
@@ -188,14 +211,13 @@ class SyncService : BaseService() {
 
     override fun onDestroy() {
         super.onDestroy()
-
         keepConnection = false
         status = ServiceStatus.Stopped
         Utils.instance = null
 
         try {
-            if (bluetoothSocket.isConnected)
-                bluetoothSocket.close()
+            if (bluetoothSocket != null && bluetoothSocket?.isConnected == true)
+                disconnectDevice()
         } catch (ignored: Exception) {
             logger.finest(ignored)
         }
@@ -208,25 +230,49 @@ class SyncService : BaseService() {
     }
 
     private fun connectDevice() {
-        if (!this::bluetoothSocket.isInitialized || !bluetoothSocket.isConnected) {
+        if (bluetoothSocket == null || bluetoothSocket?.isConnected == false) {
             logger.info("Server started and free. Accepting more devices.")
             status = ServiceStatus.StartedButNoDeviceConnected
 
+
             bluetoothSocket = bluetoothServerSocket.accept()
-            bluetoothDevice = bluetoothSocket.remoteDevice
-            dataInputStream = DataInputStream(bluetoothSocket.inputStream)
-            dataOutputStream = DataOutputStream(bluetoothSocket.outputStream)
-            communicator = RfcommCommunicator(dataInputStream, dataOutputStream)
+            bluetoothDevice = bluetoothSocket!!.remoteDevice
+            dataInputStream = DataInputStream(bluetoothSocket!!.inputStream)
+            dataOutputStream = DataOutputStream(bluetoothSocket!!.outputStream)
+            communicator =
+                RfcommCommunicator(
+                    dataInputStream!!,
+                    dataOutputStream!!
+                )
 
             status = ServiceStatus.DeviceConnected
-            logger.info("PC Client Device online: ${bluetoothDevice.name} (${bluetoothDevice.address})")
+            logger.info("PC Client Device online: ${bluetoothDevice!!.name} (${bluetoothDevice!!.address})")
+
         }
+    }
+
+    private fun disconnectDevice() {
+        status = ServiceStatus.StartedButNoDeviceConnected
+
+        if (status != ServiceStatus.TemporaryError) {
+            try {
+                dataInputStream?.close()
+                dataOutputStream?.close()
+                bluetoothSocket?.close()
+            } catch (ignored: Exception) { }
+        }
+
+        bluetoothSocket = null
+        bluetoothDevice = null
+        dataInputStream = null
+        dataOutputStream = null
+        communicator = null
     }
 
     private fun sendData(type: Byte, options: Byte = 0, data: ByteArray? = null) {
         syncThreadExecutor.submit {
             try {
-                communicator.writeData(type, options, data)
+                communicator!!.writeData(type, options, data)
             } catch (e: Throwable) {
                 logger.severe(e)
             }
@@ -236,7 +282,7 @@ class SyncService : BaseService() {
     private fun sendData(frame: RfcommFrame) {
         syncThreadExecutor.submit {
             try {
-                communicator.writeData(frame)
+                communicator!!.writeData(frame)
             } catch (e: Throwable) {
                 logger.severe(e)
             }
@@ -249,7 +295,7 @@ class SyncService : BaseService() {
     }
 
     companion object Utils {
-        const val ServiceNotificationID       = 0xA1
+        const val ServiceNotificationID = 0xA1
         const val EmergencyNotificationBaseID = 0x30
 
         var instance: SyncService? = null
@@ -313,7 +359,8 @@ class SyncService : BaseService() {
         return builder
     }
 
-    private fun updateServiceNotification() = notificationManager.notify(ServiceNotificationID, serviceNotificationBuilder.build())
+    private fun updateServiceNotification() =
+        notificationManager.notify(ServiceNotificationID, serviceNotificationBuilder.build())
 
     private fun createEmergencyNotification(text: String): NotificationCompat.Builder {
         val builder =

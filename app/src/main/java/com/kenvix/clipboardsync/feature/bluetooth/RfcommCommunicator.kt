@@ -1,10 +1,7 @@
-package com.kenvix.clipboardsync.service
+package com.kenvix.clipboardsync.feature.bluetooth
 
-import com.kenvix.clipboardsync.ApplicationProperties
 import com.kenvix.clipboardsync.preferences.MainPreferences
 import com.kenvix.utils.android.GzipCompressUtils
-import com.kenvix.utils.log.Logging
-import com.kenvix.utils.log.severe
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import kotlin.experimental.and

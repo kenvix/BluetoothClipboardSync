@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<!--<![endif]-->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width">
+    <link rel="profile" href="https://gmpg.org/xfn/11">
+
+    <meta http-equiv="Cache-Control" content="no-transform">
+    <meta http-equiv="Cache-Control" content="no-siteapp">
+    <style>
+xmp, pre, plaintext {
+  display: block;
+  font-family: -moz-fixed;
+  white-space: pre;
+  margin: 1em 0;
+}
+pre {
+white-space: pre-wrap;
+word-wrap: break-word;
+}
+</style>
+</head>
+<body>
+<h1>授予剪贴板修改权限</h1>
+
+<p>在 Android 10 上必须授予此权限才能开启剪贴板同步，授予方法如下：</p>
+
+<ol>
+    <li>
+        打开手机 “开发者模式” 中的 “USB 调试”
+        <a href="https://jingyan.baidu.com/article/c275f6ba71db93e33d75672b.html" target="_blank">具体操作方法点击此处</a>
+    </li>
+    <li>用 USB 连接电脑，此时若弹出调试授权框，请点击 “是”</li>
+    <li>
+        在 ADB 目录打开命令提示符，输入 <b>adb shell</b>
+        <a href="https://jingyan.baidu.com/article/c1465413d325660bfcfc4c38.html" target="_blank">具体操作方法点击此处</a>
+    </li>
+    <li>
+        执行以下命令（总共三行）：
+        <pre>adb -d shell appops set com.kenvix.clipboardsync SYSTEM_ALERT_WINDOW allow
+
+adb -d shell pm grant com.kenvix.clipboardsync android.permission.READ_LOGS
+
+adb shell am force-stop com.kenvix.clipboardsync</pre>
+    </li>
+</ol>
+
+</body>
+</html>

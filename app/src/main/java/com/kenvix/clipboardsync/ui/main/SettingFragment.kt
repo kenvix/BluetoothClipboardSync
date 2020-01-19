@@ -10,10 +10,10 @@ import android.annotation.SuppressLint
 import android.bluetooth.BluetoothClass
 import android.bluetooth.BluetoothDevice
 import android.content.*
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
-import android.os.IBinder
 import android.os.Message
 import android.provider.Settings
 import android.util.Log
@@ -24,19 +24,12 @@ import com.google.gson.Gson
 import com.kenvix.clipboardsync.R
 import com.kenvix.clipboardsync.broadcast.SyncServiceStateBroadcast
 import com.kenvix.clipboardsync.preferences.MainPreferences
-import com.kenvix.clipboardsync.service.BluetoothUtils
+import com.kenvix.clipboardsync.feature.bluetooth.BluetoothUtils
 import com.kenvix.clipboardsync.service.SyncService
+import com.kenvix.clipboardsync.ui.other.WebViewActivity
 import com.kenvix.utils.android.exceptionIgnored
-import com.kenvix.utils.android.startService
 import com.kenvix.utils.log.Logging
-import com.kenvix.utils.log.finest
-import java.io.IOException
-import java.io.InputStream
-import com.kenvix.utils.android.bindService
-import com.kenvix.utils.tools.CommonTools
-import java.io.OutputStream
 import java.util.*
-import kotlin.concurrent.schedule
 
 
 class SettingFragment internal constructor(private val activity: MainActivity): PreferenceFragmentCompat(), Logging {
@@ -142,6 +135,17 @@ class SettingFragment internal constructor(private val activity: MainActivity): 
                 updateStatus(intent.getSerializableExtra(KeyNewStatus) as SyncService.ServiceStatus)
             }
         }
+
+        if (android.os.Build.VERSION.SDK_INT >= 29
+            && activity.checkSelfPermission("android.permission.READ_LOGS") != PackageManager.PERMISSION_GRANTED) {
+            val pref = findPreference<Preference>("enable_clipboard_sync")
+            pref?.summary = getString(R.string.clipboard_sync_error)
+            pref?.isPersistent = false
+            pref?.setOnPreferenceClickListener {
+                WebViewActivity.startActivity(activity, 0xA9, "file:///android_asset/grant_permission.html", "Grant Permission")
+                false
+            }
+        }
     }
 
     override fun onStart() {
@@ -162,7 +166,8 @@ class SettingFragment internal constructor(private val activity: MainActivity): 
                 SyncService.ServiceStatus.Stopped -> "服务已停止"
                 SyncService.ServiceStatus.Starting -> "正在启动"
                 SyncService.ServiceStatus.StartedButNoDeviceConnected -> "已启动 (无设备连接)"
-                SyncService.ServiceStatus.DeviceConnected -> "设备已连接"
+                SyncService.ServiceStatus.DeviceConnected -> "已启动，设备已连接"
+                SyncService.ServiceStatus.TemporaryError -> "暂时出错，请稍候"
             }
         }
     }

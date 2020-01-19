@@ -4,15 +4,9 @@
 // Written by Kenvix <i@kenvix.com>
 //--------------------------------------------------
 
-package com.kenvix.clipboardsync.service
+package com.kenvix.clipboardsync.feature.bluetooth
 
 import android.bluetooth.BluetoothAdapter
-import android.bluetooth.BluetoothDevice
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
-import com.kenvix.clipboardsync.ApplicationEnvironment
 import com.kenvix.clipboardsync.exception.EnvironmentNotSatisfiedException
 
 object BluetoothUtils {

@@ -9,7 +9,7 @@ package com.kenvix.clipboardsync.broadcast
 import android.app.RemoteInput
 import android.content.*
 import android.os.IBinder
-import com.kenvix.clipboardsync.service.RfcommFrame
+import com.kenvix.clipboardsync.feature.bluetooth.RfcommFrame
 import com.kenvix.clipboardsync.service.SyncService
 import com.kenvix.utils.log.Logging
 import com.kenvix.utils.android.bindService

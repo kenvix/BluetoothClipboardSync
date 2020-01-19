@@ -139,4 +139,5 @@
     <string name="stop">停止</string>
     <string name="send_message_to_pc">向 PC 发送消息</string>
     <string name="service_notification_default">展开查看最近收到的消息</string>
+    <string name="clipboard_sync_error">未获得剪贴板修改权限，无法进行同步。在 Android 10 上必须授予此权限才能开启剪贴板同步，点击查看如何授予</string>
 </resources>

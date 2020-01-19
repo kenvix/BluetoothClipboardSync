@@ -10,7 +10,7 @@ import androidx.drawerlayout.widget.DrawerLayout
 import com.google.android.material.navigation.NavigationView
 import com.kenvix.clipboardsync.R
 import com.kenvix.clipboardsync.exception.EnvironmentNotSatisfiedException
-import com.kenvix.clipboardsync.service.BluetoothUtils
+import com.kenvix.clipboardsync.feature.bluetooth.BluetoothUtils
 import com.kenvix.clipboardsync.ui.base.BaseActivity
 import com.kenvix.utils.android.annotation.ViewAutoLoad
 

@@ -4,7 +4,7 @@
 // Written by Kenvix <i@kenvix.com>
 //--------------------------------------------------
 
-package com.kenvix.clipboardsync.service
+package com.kenvix.clipboardsync.feature.bluetooth
 
 //                       Structure of sync frame
 // -----------------------------------------------------------------
