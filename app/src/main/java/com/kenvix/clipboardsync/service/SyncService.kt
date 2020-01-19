@@ -23,11 +23,15 @@ import androidx.core.app.RemoteInput
 import androidx.core.content.ContextCompat.getSystemService
 import com.kenvix.clipboardsync.ApplicationProperties
 import com.kenvix.clipboardsync.R
+import com.kenvix.clipboardsync.broadcast.SendMessageBroadcast
+import com.kenvix.clipboardsync.broadcast.SyncServiceStateBroadcast
 import com.kenvix.clipboardsync.preferences.MainPreferences
 import com.kenvix.utils.android.BaseService
 import com.kenvix.utils.android.ServiceBinder
+import com.kenvix.utils.log.finest
 import com.kenvix.utils.log.severe
 import com.kenvix.utils.log.warning
+import com.kenvix.utils.tools.CommonTools
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.IOException
@@ -63,6 +67,7 @@ class SyncService : BaseService() {
             if (this::bluetoothDevice.isInitialized)
                 onStatusChangedListener?.invoke(value, bluetoothDevice)
 
+            SyncServiceStateBroadcast.sendBroadcast(this, value)
             field = value
         }
 
@@ -70,8 +75,9 @@ class SyncService : BaseService() {
 
     override fun onInitialize() {
         notificationManager = getSystemService(this, NotificationManager::class.java)!!
+        Utils.instance = this
 
-        val sendIntent = Intent(this, SendMessageBroadcastReceiver::class.java)
+        val sendIntent = Intent(this, SendMessageBroadcast::class.java)
         sendIntent.putExtra("is_from_notification", true)
         val sendPendingIntent = PendingIntent.getBroadcast(
                 this,
@@ -107,8 +113,6 @@ class SyncService : BaseService() {
         serviceNotificationBuilder = notificationBuilder
         startForeground(ServiceNotificationID, serviceNotificationBuilder.build())
     }
-
-
 
     enum class ServiceStatus { Stopped, Starting, StartedButNoDeviceConnected, DeviceConnected }
 
@@ -187,11 +191,13 @@ class SyncService : BaseService() {
 
         keepConnection = false
         status = ServiceStatus.Stopped
+        Utils.instance = null
 
         try {
             if (bluetoothSocket.isConnected)
                 bluetoothSocket.close()
         } catch (ignored: Exception) {
+            logger.finest(ignored)
         }
 
         syncThreadExecutor.shutdown()
@@ -245,6 +251,10 @@ class SyncService : BaseService() {
     companion object Utils {
         const val ServiceNotificationID       = 0xA1
         const val EmergencyNotificationBaseID = 0x30
+
+        var instance: SyncService? = null
+        val isRunning
+            get() = instance != null && instance?.status != ServiceStatus.Stopped
 
         fun startService(context: ContextWrapper) {
             val intent = Intent(context, SyncService::class.java)

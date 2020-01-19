@@ -4,15 +4,17 @@
 // Written by Kenvix <i@kenvix.com>
 //--------------------------------------------------
 
-package com.kenvix.clipboardsync.service
+package com.kenvix.clipboardsync.broadcast
 
 import android.app.RemoteInput
 import android.content.*
 import android.os.IBinder
+import com.kenvix.clipboardsync.service.RfcommFrame
+import com.kenvix.clipboardsync.service.SyncService
 import com.kenvix.utils.log.Logging
 import com.kenvix.utils.android.bindService
 
-class SendMessageBroadcastReceiver : BroadcastReceiver(), Logging {
+class SendMessageBroadcast : BroadcastReceiver(), Logging {
 
     override fun onReceive(context: Context, intent: Intent) {
         val data = if (intent.getBooleanExtra("is_from_notification", false)) {
@@ -39,7 +41,9 @@ class SendMessageBroadcastReceiver : BroadcastReceiver(), Logging {
 
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
                 service as SyncService.Binder
-                service.sendDataAsync(RfcommFrame.TypeEmergency, RfcommFrame.OptionNone, text.toByteArray())
+                service.sendDataAsync(
+                    RfcommFrame.TypeEmergency,
+                    RfcommFrame.OptionNone, text.toByteArray())
             }
         })
     }

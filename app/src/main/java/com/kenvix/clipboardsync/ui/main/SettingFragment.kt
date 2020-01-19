@@ -9,9 +9,7 @@ package com.kenvix.clipboardsync.ui.main
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothClass
 import android.bluetooth.BluetoothDevice
-import android.content.ComponentName
-import android.content.Intent
-import android.content.ServiceConnection
+import android.content.*
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
@@ -24,6 +22,7 @@ import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import com.google.gson.Gson
 import com.kenvix.clipboardsync.R
+import com.kenvix.clipboardsync.broadcast.SyncServiceStateBroadcast
 import com.kenvix.clipboardsync.preferences.MainPreferences
 import com.kenvix.clipboardsync.service.BluetoothUtils
 import com.kenvix.clipboardsync.service.SyncService
@@ -44,6 +43,7 @@ class SettingFragment internal constructor(private val activity: MainActivity): 
     private lateinit var devicesListPreference: ListPreference
     private lateinit var bluetoothDevices: Array<BluetoothDevice>
     private var selectedDevice: BluetoothDevice? = null
+    private lateinit var serviceStatusChangeReceiver: SyncServiceStateBroadcast
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -130,38 +130,30 @@ class SettingFragment internal constructor(private val activity: MainActivity): 
         findPreference<Preference>("view_github")?.setOnPreferenceClickListener { openURL("https://github.com/kenvix/BluetoothClipboardSync") }
         findPreference<Preference>("author")?.setOnPreferenceClickListener { openURL("https://kenvix.com") }
         deviceStatusPreference.setOnPreferenceClickListener { pref ->
-            SyncService.startService(activity)
-            getAndUpdateServiceStatus()
+            if (!SyncService.isRunning) {
+                SyncService.startService(activity)
+            }
+
             false
         }
 
-        Thread {
-            while (true) {
-                getAndUpdateServiceStatus()
-                CommonTools.sleep(3000)
+        serviceStatusChangeReceiver = object : SyncServiceStateBroadcast() {
+            override fun onReceiveBroadcast(context: Context, intent: Intent) {
+                updateStatus(intent.getSerializableExtra(KeyNewStatus) as SyncService.ServiceStatus)
             }
-        }.start()
+        }
     }
 
-    private fun getAndUpdateServiceStatus() {
-        logger.finest("Update service status...")
+    override fun onStart() {
+        super.onStart()
+        val intentFilter = IntentFilter()
+        intentFilter.addAction(SyncServiceStateBroadcast.BroadcastActionName)
+        activity.registerReceiver(serviceStatusChangeReceiver, intentFilter)
+    }
 
-        activity.bindService(SyncService::class.java, object : ServiceConnection {
-            override fun onServiceDisconnected(name: ComponentName?) {
-
-            }
-
-            override fun onServiceConnected(name: ComponentName?, service: IBinder) {
-                service as SyncService.Binder
-                updateStatus(service.status)
-                service.onStatusChangedListener =
-                    { serviceStatus: SyncService.ServiceStatus, _: BluetoothDevice ->
-                        val msg = Message()
-                        msg.obj = serviceStatus
-                        this@SettingFragment.statusUpdateHandler.sendMessage(msg)
-                    }
-            }
-        })
+    override fun onStop() {
+        super.onStop()
+        activity.unregisterReceiver(serviceStatusChangeReceiver)
     }
 
     private fun updateStatus(serviceStatus: SyncService.ServiceStatus) {
