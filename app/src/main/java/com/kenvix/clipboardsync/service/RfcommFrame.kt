@@ -9,12 +9,12 @@ package com.kenvix.clipboardsync.service
 //                       Structure of sync frame
 // -----------------------------------------------------------------
 // | Type | Options | Length | (Optional) Data (Optional GZIP Compressed) |
-// 0      1         2        6                                           6+Len
+// 0      1         2        4                                           4+Len
 // -----------------------------------------------------------------
 data class RfcommFrame(
     val type: Byte,
     val option: Byte,
-    val length: Int,
+    val length: Short,
     val data: ByteArray? = null
 ) {
     override fun equals(other: Any?): Boolean {
@@ -35,6 +35,6 @@ data class RfcommFrame(
     }
 
     override fun hashCode(): Int {
-        return 31 + type xor option.toInt() xor length xor (data?.hashCode() ?: 0)
+        return 31 + type xor option.toInt() xor length.toInt() xor (data?.hashCode() ?: 0)
     }
 }

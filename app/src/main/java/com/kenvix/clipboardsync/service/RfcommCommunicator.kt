@@ -30,15 +30,15 @@ class RfcommCommunicator(private val dataInputStream: DataInputStream, private v
     fun readData(): RfcommFrame {
         val type: Byte = dataInputStream.readByte()
         val option: Byte = dataInputStream.readByte()
-        val length: Int = dataInputStream.readInt()
+        val length: Short = dataInputStream.readShort()
         var data: ByteArray? = null
 
         if (length > 0) {
-            data = ByteArray(length)
+            data = ByteArray(length.toInt())
             dataInputStream.readFully(data)
 
             if (length > ApplicationProperties.MinGzipCompressSize)
-                data = GzipCompressUtils.decompress(data, length)
+                data = GzipCompressUtils.decompress(data, length.toInt())
         }
 
         return RfcommFrame(

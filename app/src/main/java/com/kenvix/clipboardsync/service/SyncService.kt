@@ -6,13 +6,23 @@
 
 package com.kenvix.clipboardsync.service
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothServerSocket
 import android.bluetooth.BluetoothSocket
 import android.content.ContextWrapper
 import android.content.Intent
+import android.os.Build
 import android.os.IBinder
-import com.kenvix.clipboardsync.ApplicationEnvironment
+import androidx.core.app.NotificationCompat
+import androidx.core.app.RemoteInput
+import androidx.core.content.ContextCompat.getSystemService
 import com.kenvix.clipboardsync.ApplicationProperties
+import com.kenvix.clipboardsync.R
 import com.kenvix.utils.android.BaseService
 import com.kenvix.utils.android.ServiceBinder
 import com.kenvix.utils.log.severe
@@ -27,61 +37,135 @@ import java.util.concurrent.Executors
 
 class SyncService : BaseService() {
     private val binder = Binder()
-    private var continuousFails = 0
 
     private lateinit var syncThreadExecutor: ExecutorService
+    private lateinit var bluetoothAdapter: BluetoothAdapter
+    private lateinit var bluetoothServerSocket: BluetoothServerSocket
     private lateinit var bluetoothSocket: BluetoothSocket
     private lateinit var bluetoothDevice: BluetoothDevice
     private lateinit var dataOutputStream: DataOutputStream
     private lateinit var dataInputStream: DataInputStream
     private lateinit var communicator: RfcommCommunicator
+    private lateinit var notificationManager: NotificationManager
+    private lateinit var notification: Notification
+
+    var onStatusChangedListener: ((status: ServiceStatus, bluetoothDevice: BluetoothDevice) -> Unit)? =
+        null
 
     @Volatile
-    public var keepConnection: Boolean = true
+    private var keepConnection: Boolean = true
+    @Volatile
+    private var status: ServiceStatus = ServiceStatus.Stopped
+        set(value) {
+            if (this::bluetoothDevice.isInitialized)
+                onStatusChangedListener?.invoke(value, bluetoothDevice)
 
-    val uuid = UUID.fromString(ApplicationProperties.BluetoothSyncUUID)!!
+            field = value
+        }
+
+    private val uuid = UUID.fromString(ApplicationProperties.BluetoothSyncUUID)!!
 
     override fun onInitialize() {
+        notificationManager = getSystemService(this, NotificationManager::class.java)!!
 
+        val sendIntent = Intent(this, SendMessageBroadcastReceiver::class.java)
+        sendIntent.putExtra("is_from_notification", true)
+        val sendPendingIntent = PendingIntent.getBroadcast(
+                this,
+                0xA2,
+                sendIntent,
+                PendingIntent.FLAG_ONE_SHOT
+        )
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val actionSendMessage = NotificationCompat.Action.Builder(
+                    android.R.drawable.sym_def_app_icon,
+                    getString(R.string.send_message_to_pc),
+                    sendPendingIntent
+                )
+                .addRemoteInput(
+                    RemoteInput.Builder("message")
+                        .setLabel(getString(R.string.send_message_to_pc)).build()
+                )
+                .build()
+
+            val actionStop = NotificationCompat.Action.Builder(
+                    android.R.drawable.sym_def_app_icon,
+                    getString(R.string.stop),
+                    sendPendingIntent
+                )
+                .build()
+
+            val notificationBuilder = createServiceNotification()
+                .addAction(actionSendMessage)
+                .addAction(actionStop)
+
+            notification = notificationBuilder.build()
+            startForeground(ServiceNotificationID, notification)
+        }
     }
 
+
+
+    enum class ServiceStatus { Stopped, Starting, StartedButNoDeviceConnected, DeviceConnected }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent == null)
-            throw IllegalArgumentException("Intent cannot be null")
+        if (status == ServiceStatus.Stopped) {
+            if (intent == null)
+                throw IllegalArgumentException("Intent cannot be null")
 
-        syncThreadExecutor = Executors.newFixedThreadPool(2)
+            status = ServiceStatus.Starting
+            syncThreadExecutor = Executors.newFixedThreadPool(2)
 
-        bluetoothDevice = intent.getParcelableExtra<BluetoothDevice>("device")
-            ?: throw IllegalArgumentException("Device cannot be null")
-        keepConnection = true
+            bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+            logger.finest("Starting, I'm ${bluetoothAdapter.name}")
 
-        syncThreadExecutor.submit {
-            bluetoothSocket = bluetoothDevice.createRfcommSocketToServiceRecord(uuid)
+            keepConnection = true
 
-            while (keepConnection) {
+            syncThreadExecutor.submit {
                 try {
-                    connectDevice()
-                    val data = communicator.readData()
+                    bluetoothServerSocket =
+                        bluetoothAdapter.listenUsingRfcommWithServiceRecord("clipboardSync", uuid)
 
-                    when (data.type) {
-                        ApplicationProperties.BluetoothSyncPing -> {
-                            sendData(ApplicationProperties.BluetoothSyncPong)
+                    while (keepConnection) {
+                        try {
+                            connectDevice()
+                            val data = communicator.readData()
+
+                            when (data.type) {
+                                ApplicationProperties.BluetoothSyncPing -> {
+                                    if (data.length > 0)
+                                        sendData(
+                                            ApplicationProperties.BluetoothSyncPong,
+                                            0,
+                                            data.data
+                                        )
+                                    else
+                                        sendData(ApplicationProperties.BluetoothSyncPong)
+                                }
+
+                                ApplicationProperties.BluetoothSyncUpdateClipboard -> {
+                                    sendData(ApplicationProperties.BluetoothSyncClipboardSuccess)
+                                }
+
+                                ApplicationProperties.BluetoothSyncEmergency -> {
+                                    if (data.data != null)
+                                        notificationManager.notify(
+                                            0xA2,
+                                            createEmergencyNotification(String(data.data)).build()
+                                        )
+
+                                    sendData(ApplicationProperties.BluetoothSyncClipboardSuccess)
+                                }
+
+                                else -> logger.warning("Unknown bluetooth data type ${data.type}")
+                            }
+                        } catch (e: IOException) {
+                            logger.warning(e)
                         }
-
-                        ApplicationProperties.BluetoothSyncUpdateClipboard -> {
-                            sendData(ApplicationProperties.BluetoothSyncClipboardSuccess)
-                        }
-
-                        else -> logger.warning("Unknown bluetooth data type ${data.type}")
                     }
-
-                    continuousFails = 0
-                } catch (e: IOException) {
-                    logger.warning(e)
-                    continuousFails++
-
-                    if (continuousFails > 2)
-                        onMaxFailsReached()
+                } catch (e: java.lang.Exception) {
+                    logger.severe(e)
                 }
             }
         }
@@ -89,19 +173,17 @@ class SyncService : BaseService() {
         return super.onStartCommand(intent, flags, startId)
     }
 
-    private fun onMaxFailsReached() {
-        keepConnection = false
-    }
-
     override fun onDestroy() {
         super.onDestroy()
 
         keepConnection = false
+        status = ServiceStatus.Stopped
 
         try {
             if (bluetoothSocket.isConnected)
                 bluetoothSocket.close()
-        } catch (ignored: Exception) {}
+        } catch (ignored: Exception) {
+        }
 
         syncThreadExecutor.shutdown()
     }
@@ -111,12 +193,18 @@ class SyncService : BaseService() {
     }
 
     private fun connectDevice() {
-        if (!bluetoothSocket.isConnected) {
-            bluetoothSocket.connect()
+        if (!this::bluetoothSocket.isInitialized || !bluetoothSocket.isConnected) {
+            logger.info("Server started and free. Accepting more devices.")
+            status = ServiceStatus.StartedButNoDeviceConnected
 
+            bluetoothSocket = bluetoothServerSocket.accept()
+            bluetoothDevice = bluetoothSocket.remoteDevice
             dataInputStream = DataInputStream(bluetoothSocket.inputStream)
             dataOutputStream = DataOutputStream(bluetoothSocket.outputStream)
             communicator = RfcommCommunicator(dataInputStream, dataOutputStream)
+
+            status = ServiceStatus.DeviceConnected
+            logger.info("PC Client Device online: ${bluetoothDevice.name} (${bluetoothDevice.address})")
         }
     }
 
@@ -141,18 +229,96 @@ class SyncService : BaseService() {
     }
 
     companion object Utils {
-        @JvmStatic
-        fun startService(context: ContextWrapper, device: BluetoothDevice) {
+        const val ServiceNotificationID = 0xA1
+
+        fun startService(context: ContextWrapper) {
             val intent = Intent(context, SyncService::class.java)
-            intent.putExtra("device", device)
-            context.startService(intent)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
         }
+    }
+
+
+    private fun createNotificationChannel() { // 在API>=26的时候创建通知渠道
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { //设定的通知渠道名称
+            val channelName: String = this.getString(R.string.service_sync)
+            val importance = NotificationManager.IMPORTANCE_MIN
+
+            //构建通知渠道
+            val channel = NotificationChannel(
+                ApplicationProperties.BluetoothSyncChannelID,
+                channelName,
+                importance
+            )
+            channel.description = channelName
+            channel.enableVibration(false)
+
+            val channelE = NotificationChannel(
+                ApplicationProperties.BluetoothSyncChannelIDEmergency,
+                getString(R.string.service_sync_emergency), NotificationManager.IMPORTANCE_HIGH
+            )
+            channelE.description = getString(R.string.service_sync_emergency_desc)
+            channelE.enableVibration(true)
+            channelE.enableLights(true)
+
+            //向系统注册通知渠道，注册后不能改变重要性以及其他通知行为
+            notificationManager?.createNotificationChannel(channel)
+            notificationManager?.createNotificationChannel(channelE)
+        }
+    }
+
+    private fun createServiceNotification(): NotificationCompat.Builder {
+        createNotificationChannel()
+
+        val builder = NotificationCompat.Builder(this, this.getString(R.string.service_sync))
+        builder
+            .setContentTitle(this.getString(R.string.service_sync)) //设置通知标题
+            .setContentText("收到的消息将会显示在此处。点击可发送消息") //设置通知内容
+            .setAutoCancel(true) //用户触摸时，自动关闭
+            .setWhen(System.currentTimeMillis())
+            .setSmallIcon(R.drawable.ic_server_3)
+            .setCategory(Notification.CATEGORY_SERVICE)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setChannelId(ApplicationProperties.BluetoothSyncChannelID)
+            .setOngoing(true) //设置处于运行状态
+
+        return builder
+    }
+
+    private fun createEmergencyNotification(text: String): NotificationCompat.Builder {
+        val builder =
+            NotificationCompat.Builder(this, this.getString(R.string.service_sync_emergency))
+
+        builder
+            .setContentTitle(this.getString(R.string.service_sync_emergency)) //设置通知标题
+            .setContentText(text) //设置通知内容
+            .setAutoCancel(true) //用户触摸时，自动关闭
+            .setWhen(System.currentTimeMillis())
+            .setSmallIcon(android.R.drawable.stat_notify_voicemail)
+            .setCategory(Notification.CATEGORY_MESSAGE)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setChannelId(ApplicationProperties.BluetoothSyncChannelIDEmergency)
+
+        return builder
     }
 
     inner class Binder : ServiceBinder<SyncService>() {
         override val service: SyncService = this@SyncService
+        val status: ServiceStatus
+            get() = this@SyncService.status
 
-        fun sendDataAsync(type: Byte, options: Byte = 0, data: ByteArray? = null) = service.sendData(type, options, data)
+        var onStatusChangedListener: ((status: ServiceStatus, bluetoothDevice: BluetoothDevice) -> Unit)?
+            get() = this@SyncService.onStatusChangedListener
+            set(value) {
+                this@SyncService.onStatusChangedListener = value
+            }
+
+        fun sendDataAsync(type: Byte, options: Byte = 0, data: ByteArray? = null) =
+            service.sendData(type, options, data)
+
         fun sendDataAsync(frame: RfcommFrame) = service.sendData(frame)
     }
 }

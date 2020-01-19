@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <application
         android:name=".ApplicationEnvironment"
@@ -39,6 +40,8 @@
                 <action android:name="android.bluetooth.BluetoothAdapter.ACTION_DISCOVERY_STARTED" />
             </intent-filter>
         </receiver>
+
+        <receiver android:name=".service.SendMessageBroadcastReceiver" />
     </application>
 
 </manifest>

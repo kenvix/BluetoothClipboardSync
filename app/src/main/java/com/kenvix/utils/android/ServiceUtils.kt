@@ -1,12 +1,15 @@
 @file:JvmName("ServiceUtils")
 package com.kenvix.utils.android
 
+import android.app.ActivityManager
+import android.content.Context
 import android.content.Context.BIND_AUTO_CREATE
 import android.content.ContextWrapper
 import android.content.Intent
 import android.content.ServiceConnection
+import androidx.core.content.ContextCompat.getSystemService
 import com.kenvix.clipboardsync.ApplicationEnvironment
-import java.lang.Exception
+
 
 /**
  * 启动服务

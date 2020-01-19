@@ -14,6 +14,9 @@
     <string name="register_input_username_hint">手机号</string>
     <string name="register_sms_auth_code">短信验证码</string>
     <string name="register_sms_hint">获取验证码</string>
+    <string name="service_sync">同步服务</string>
+    <string name="service_sync_emergency">紧急消息</string>
+    <string name="service_sync_emergency_desc">来自 PC 的紧急消息</string>
     <string name="loading">请稍候</string>
 
     <string name="error_operation_failed">操作失败：</string>
@@ -133,4 +136,6 @@
     <string name="prompt_wrong_auth">用户名或密码错误</string>
     <string name="title_recognize_result">识别结果</string>
     <string name="no_bluetooth_device">此设备不支持蓝牙，无法使用本程序</string>
+    <string name="stop">停止</string>
+    <string name="send_message_to_pc">向 PC 发送消息</string>
 </resources>

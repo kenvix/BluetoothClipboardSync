@@ -10,13 +10,19 @@ import android.util.Log
 import androidx.annotation.NonNull
 import com.kenvix.utils.log.Logging
 import com.kenvix.utils.android.AndroidLoggingHandler
+import com.kenvix.utils.log.LogSettings
+import com.kenvix.utils.log.LoggingOutputStream
 import okhttp3.Cache
 import okhttp3.OkHttpClient
+import java.io.OutputStream
+import java.io.PrintStream
 import java.util.*
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.SynchronousQueue
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
+import java.util.logging.Level
+import java.util.logging.Logger
 
 class ApplicationEnvironment : Application(), Logging {
     override fun getLogTag(): String = "ApplicationEnvironment"
@@ -108,6 +114,8 @@ class ApplicationEnvironment : Application(), Logging {
         instance = this
 
         AndroidLoggingHandler.applyToKenvixLogger()
+        System.setErr(PrintStream(LoggingOutputStream(Logger.getLogger("StandardError"), Level.SEVERE)))
+        System.setOut(PrintStream(LoggingOutputStream(Logger.getLogger("StandardOutput"), Level.INFO)))
 
         logger.finer("Application Initialized")
 

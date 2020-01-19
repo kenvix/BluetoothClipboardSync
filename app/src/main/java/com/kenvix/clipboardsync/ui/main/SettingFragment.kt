@@ -6,11 +6,17 @@
 
 package com.kenvix.clipboardsync.ui.main
 
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothClass
 import android.bluetooth.BluetoothDevice
+import android.content.ComponentName
 import android.content.Intent
+import android.content.ServiceConnection
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.IBinder
+import android.os.Message
 import android.provider.Settings
 import android.util.Log
 import androidx.preference.ListPreference
@@ -27,8 +33,11 @@ import com.kenvix.utils.log.Logging
 import com.kenvix.utils.log.finest
 import java.io.IOException
 import java.io.InputStream
+import com.kenvix.utils.android.bindService
+import com.kenvix.utils.tools.CommonTools
 import java.io.OutputStream
 import java.util.*
+import kotlin.concurrent.schedule
 
 
 class SettingFragment internal constructor(private val activity: MainActivity): PreferenceFragmentCompat(), Logging {
@@ -41,9 +50,18 @@ class SettingFragment internal constructor(private val activity: MainActivity): 
         MainPreferences.applyToPreferenceManager(preferenceManager)
     }
 
+    private lateinit var deviceStatusPreference: Preference
+    val statusUpdateHandler = @SuppressLint("HandlerLeak") object : Handler() {
+        override fun handleMessage(msg: Message?) {
+            super.handleMessage(msg)
+            updateStatus(msg!!.obj as SyncService.ServiceStatus)
+        }
+    }
+
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         addPreferencesFromResource(R.xml.pref_main)
 
+        deviceStatusPreference = findPreference<Preference>("device_status")!!
         devicesListPreference = findPreference("device_address")!!
         if (MainPreferences.deviceMacAddress.isNotBlank()) {
             try {
@@ -111,11 +129,49 @@ class SettingFragment internal constructor(private val activity: MainActivity): 
         }
         findPreference<Preference>("view_github")?.setOnPreferenceClickListener { openURL("https://github.com/kenvix/BluetoothClipboardSync") }
         findPreference<Preference>("author")?.setOnPreferenceClickListener { openURL("https://kenvix.com") }
-        findPreference<Preference>("device_status")?.setOnPreferenceClickListener {
-            if (selectedDevice != null) {
-                SyncService.startService(activity, selectedDevice!!)
-            }
+        deviceStatusPreference.setOnPreferenceClickListener { pref ->
+            SyncService.startService(activity)
+            getAndUpdateServiceStatus()
             false
+        }
+
+        Thread {
+            while (true) {
+                getAndUpdateServiceStatus()
+                CommonTools.sleep(3000)
+            }
+        }.start()
+    }
+
+    private fun getAndUpdateServiceStatus() {
+        logger.finest("Update service status...")
+
+        activity.bindService(SyncService::class.java, object : ServiceConnection {
+            override fun onServiceDisconnected(name: ComponentName?) {
+
+            }
+
+            override fun onServiceConnected(name: ComponentName?, service: IBinder) {
+                service as SyncService.Binder
+                updateStatus(service.status)
+                service.onStatusChangedListener =
+                    { serviceStatus: SyncService.ServiceStatus, _: BluetoothDevice ->
+                        val msg = Message()
+                        msg.obj = serviceStatus
+                        this@SettingFragment.statusUpdateHandler.sendMessage(msg)
+                    }
+            }
+        })
+    }
+
+    private fun updateStatus(serviceStatus: SyncService.ServiceStatus) {
+        if (deviceStatusPreference != null) {
+            deviceStatusPreference.summary =  when (serviceStatus) {
+                SyncService.ServiceStatus.Stopped -> "服务已停止"
+                SyncService.ServiceStatus.Starting -> "正在启动"
+                SyncService.ServiceStatus.StartedButNoDeviceConnected -> "已启动 (无设备连接)"
+                SyncService.ServiceStatus.DeviceConnected -> "设备已连接"
+            }
         }
     }
 
