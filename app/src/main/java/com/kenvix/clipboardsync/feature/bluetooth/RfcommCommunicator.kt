@@ -1,7 +1,7 @@
 package com.kenvix.clipboardsync.feature.bluetooth
 
 import com.kenvix.clipboardsync.preferences.MainPreferences
-import com.kenvix.utils.android.GzipCompressUtils
+import com.kenvix.android.utils.GzipCompressUtils
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import kotlin.experimental.and

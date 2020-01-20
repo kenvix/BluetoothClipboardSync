@@ -12,7 +12,7 @@ import android.os.IBinder
 import com.kenvix.clipboardsync.feature.bluetooth.RfcommFrame
 import com.kenvix.clipboardsync.service.SyncService
 import com.kenvix.utils.log.Logging
-import com.kenvix.utils.android.bindService
+import com.kenvix.android.utils.bindService
 
 class SendMessageBroadcast : BroadcastReceiver(), Logging {
 
@@ -34,7 +34,7 @@ class SendMessageBroadcast : BroadcastReceiver(), Logging {
     }
 
     private fun sendMessage(context: Context, text: String) {
-        context.bindService(SyncService::class.java, object : ServiceConnection {
+        context.applicationContext.bindService(SyncService::class.java, object : ServiceConnection {
             override fun onServiceDisconnected(name: ComponentName?) {
 
             }

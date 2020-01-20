@@ -9,9 +9,9 @@ import androidx.appcompat.widget.Toolbar
 import androidx.drawerlayout.widget.DrawerLayout
 import com.google.android.material.navigation.NavigationView
 import com.kenvix.clipboardsync.R
-import com.kenvix.clipboardsync.exception.EnvironmentNotSatisfiedException
+import com.kenvix.android.exception.EnvironmentNotSatisfiedException
 import com.kenvix.clipboardsync.feature.bluetooth.BluetoothUtils
-import com.kenvix.clipboardsync.ui.base.BaseActivity
+import com.kenvix.android.ui.base.BaseActivity
 import com.kenvix.utils.android.annotation.ViewAutoLoad
 
 class MainActivity : BaseActivity() {

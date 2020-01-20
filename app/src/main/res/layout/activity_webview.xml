@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:id="@+id/web_view_container"
-    tools:context=".ui.other.WebViewActivity"
+    tools:context="com.kenvix.android.ui.other.WebViewActivity"
     android:orientation="horizontal">
 
     <WebView

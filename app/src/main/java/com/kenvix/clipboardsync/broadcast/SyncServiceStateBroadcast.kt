@@ -3,9 +3,11 @@ package com.kenvix.clipboardsync.broadcast
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.kenvix.android.broadcast.BroadcastReceiveEvent
 import com.kenvix.clipboardsync.service.SyncService
 
-abstract class SyncServiceStateBroadcast : BroadcastReceiver(), BroadcastReceiveEvent {
+abstract class SyncServiceStateBroadcast : BroadcastReceiver(),
+    BroadcastReceiveEvent {
     final override fun onReceive(context: Context?, intent: Intent?) {
         onReceiveBroadcast(context!!, intent!!)
     }

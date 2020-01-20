@@ -26,8 +26,8 @@ import com.kenvix.clipboardsync.broadcast.SyncServiceStateBroadcast
 import com.kenvix.clipboardsync.preferences.MainPreferences
 import com.kenvix.clipboardsync.feature.bluetooth.BluetoothUtils
 import com.kenvix.clipboardsync.service.SyncService
-import com.kenvix.clipboardsync.ui.other.WebViewActivity
-import com.kenvix.utils.android.exceptionIgnored
+import com.kenvix.android.ui.other.WebViewActivity
+import com.kenvix.android.utils.exceptionIgnored
 import com.kenvix.utils.log.Logging
 import java.util.*
 
@@ -163,11 +163,11 @@ class SettingFragment internal constructor(private val activity: MainActivity): 
     private fun updateStatus(serviceStatus: SyncService.ServiceStatus) {
         if (deviceStatusPreference != null) {
             deviceStatusPreference.summary =  when (serviceStatus) {
-                SyncService.ServiceStatus.Stopped -> "服务已停止"
-                SyncService.ServiceStatus.Starting -> "正在启动"
-                SyncService.ServiceStatus.StartedButNoDeviceConnected -> "已启动 (无设备连接)"
-                SyncService.ServiceStatus.DeviceConnected -> "已启动，设备已连接"
-                SyncService.ServiceStatus.TemporaryError -> "暂时出错，请稍候"
+                SyncService.ServiceStatus.Stopped -> getString(R.string.service_stopped)
+                SyncService.ServiceStatus.Starting -> getString(R.string.service_starting)
+                SyncService.ServiceStatus.StartedButNoDeviceConnected -> getString(R.string.service_no_device)
+                SyncService.ServiceStatus.DeviceConnected -> getString(R.string.service_connected)
+                SyncService.ServiceStatus.TemporaryError -> getString(R.string.service_temp_error)
             }
         }
     }

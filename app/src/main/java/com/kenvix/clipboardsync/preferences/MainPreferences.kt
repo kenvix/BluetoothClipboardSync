@@ -1,5 +1,7 @@
 package com.kenvix.clipboardsync.preferences
 
+import com.kenvix.android.preferences.ManagedPreferences
+
 object MainPreferences : ManagedPreferences("main") {
     var enableSync: Boolean by preferenceOf("enable_sync", true)
     var enableClipboardSync: Boolean by preferenceOf("enable_clipboard_sync", false)

@@ -21,15 +21,16 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.RemoteInput
 import androidx.core.content.ContextCompat.getSystemService
-import com.kenvix.clipboardsync.ApplicationProperties
+import com.kenvix.android.ApplicationProperties
 import com.kenvix.clipboardsync.R
 import com.kenvix.clipboardsync.broadcast.SendMessageBroadcast
 import com.kenvix.clipboardsync.broadcast.SyncServiceStateBroadcast
 import com.kenvix.clipboardsync.feature.bluetooth.RfcommCommunicator
 import com.kenvix.clipboardsync.feature.bluetooth.RfcommFrame
 import com.kenvix.clipboardsync.preferences.MainPreferences
-import com.kenvix.utils.android.BaseService
-import com.kenvix.utils.android.ServiceBinder
+import com.kenvix.clipboardsync.ui.main.MainActivity
+import com.kenvix.android.utils.BaseService
+import com.kenvix.android.utils.ServiceBinder
 import com.kenvix.utils.log.finest
 import com.kenvix.utils.log.severe
 import java.io.DataInputStream
@@ -71,6 +72,18 @@ class SyncService : BaseService() {
                 onStatusChangedListener?.invoke(value, bluetoothDevice!!)
 
             SyncServiceStateBroadcast.sendBroadcast(this, value)
+
+            if (value != ServiceStatus.Stopped) {
+                serviceNotificationBuilder.setContentTitle(this.getString(R.string.service_sync) + ": " + when (value) {
+                    SyncService.ServiceStatus.Stopped -> getString(R.string.service_stopped)
+                    SyncService.ServiceStatus.Starting -> getString(R.string.service_starting)
+                    SyncService.ServiceStatus.StartedButNoDeviceConnected -> getString(R.string.service_no_device)
+                    SyncService.ServiceStatus.DeviceConnected -> getString(R.string.service_connected)
+                    SyncService.ServiceStatus.TemporaryError -> getString(R.string.service_temp_error)
+                })
+                notificationManager.notify(ServiceNotificationID, serviceNotificationBuilder.build())
+            }
+
             field = value
         }
 
@@ -89,6 +102,9 @@ class SyncService : BaseService() {
             PendingIntent.FLAG_ONE_SHOT
         )
 
+        val stopServiceIntent = Intent(this, SyncService::class.java)
+        stopServiceIntent.action = ActionStopService
+
         val actionSendMessage = NotificationCompat.Action.Builder(
             android.R.drawable.sym_def_app_icon,
             getString(R.string.send_message_to_pc),
@@ -100,10 +116,17 @@ class SyncService : BaseService() {
             )
             .build()
 
+        val actionStartActivity = NotificationCompat.Action.Builder(
+            android.R.drawable.sym_def_app_icon,
+            getString(R.string.open_application),
+            PendingIntent.getActivity(this, 0xA3, Intent(this, MainActivity::class.java), PendingIntent.FLAG_ONE_SHOT)
+        )
+            .build()
+
         val actionStop = NotificationCompat.Action.Builder(
             android.R.drawable.sym_def_app_icon,
             getString(R.string.stop),
-            sendPendingIntent
+            PendingIntent.getService(this, 0xA5, stopServiceIntent, PendingIntent.FLAG_CANCEL_CURRENT)
         )
             .build()
 
@@ -111,16 +134,24 @@ class SyncService : BaseService() {
         val notificationBuilder = createServiceNotification()
             .setStyle(serviceInbox)
             .addAction(actionSendMessage)
+            .addAction(actionStartActivity)
             .addAction(actionStop)
 
         serviceNotificationBuilder = notificationBuilder
-        startForeground(ServiceNotificationID, serviceNotificationBuilder.build())
     }
 
     enum class ServiceStatus { Stopped, Starting, StartedButNoDeviceConnected, DeviceConnected, TemporaryError }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action != null && intent.action == ActionStopService) {
+            stop()
+            stopForeground(true)
+            return super.onStartCommand(intent, flags, startId)
+        }
+
         if (status == ServiceStatus.Stopped) {
+            startForeground(ServiceNotificationID, serviceNotificationBuilder.build())
+
             if (intent == null)
                 throw IllegalArgumentException("Intent cannot be null")
 
@@ -211,6 +242,11 @@ class SyncService : BaseService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        stop()
+        syncThreadExecutor.shutdown()
+    }
+
+    private fun stop() {
         keepConnection = false
         status = ServiceStatus.Stopped
         Utils.instance = null
@@ -221,13 +257,12 @@ class SyncService : BaseService() {
         } catch (ignored: Exception) {
             logger.finest(ignored)
         }
-
-        syncThreadExecutor.shutdown()
     }
 
     override fun onBind(intent: Intent?): IBinder? {
         return binder
     }
+
 
     private fun connectDevice() {
         if (bluetoothSocket == null || bluetoothSocket?.isConnected == false) {
@@ -295,6 +330,8 @@ class SyncService : BaseService() {
     }
 
     companion object Utils {
+        const val ActionStopService = "StopService"
+
         const val ServiceNotificationID = 0xA1
         const val EmergencyNotificationBaseID = 0x30
 

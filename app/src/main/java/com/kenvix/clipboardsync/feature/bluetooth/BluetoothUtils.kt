@@ -7,7 +7,7 @@
 package com.kenvix.clipboardsync.feature.bluetooth
 
 import android.bluetooth.BluetoothAdapter
-import com.kenvix.clipboardsync.exception.EnvironmentNotSatisfiedException
+import com.kenvix.android.exception.EnvironmentNotSatisfiedException
 
 object BluetoothUtils {
     private val bluetoothAdapter: BluetoothAdapter by lazy {

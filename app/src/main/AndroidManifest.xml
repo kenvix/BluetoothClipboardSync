@@ -9,7 +9,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <application
-        android:name=".ApplicationEnvironment"
+        android:name="com.kenvix.android.ApplicationEnvironment"
         android:allowBackup="true"
         android:fullBackupContent="@xml/backup_descriptor"
         android:label="@string/app_name"
@@ -24,7 +24,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".ui.other.WebViewActivity" />
+        <activity android:name="com.kenvix.android.ui.other.WebViewActivity" />
 
         <service android:name=".service.SyncService" />
 
