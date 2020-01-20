@@ -1,6 +1,6 @@
 package com.kenvix.utils.android.preprocessor;
 
-import com.kenvix.utils.android.Environment;
+import com.kenvix.utils.android.EnvConfig;
 import com.kenvix.utils.android.annotation.form.*;
 import com.kenvix.utils.tools.StringTools;
 import com.squareup.javapoet.ClassName;
@@ -41,7 +41,7 @@ public class FormPreprocessor extends BasePreprocessor {
                 List<MethodSpec.Builder> builders = getMethodBuilder(getFormEmptyCheckerMethodName(targetClassFullName), targetClass);
                 String RMemberName = StringTools.convertUppercaseLetterToUnderlinedLowercaseLetter(annotatedElement.getSimpleName().toString());
                 Name fieldVarName = annotatedElement.getSimpleName();
-                ClassName RId =  ClassName.get(Environment.TargetAppPackage, "R", "id");
+                ClassName RId =  ClassName.get(EnvConfig.TargetAppPackage, "R", "id");
 
                 builders.forEach(builder -> builder
                         .addStatement("$T $N = target.findViewById($T.$N)",

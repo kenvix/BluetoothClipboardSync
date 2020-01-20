@@ -1,6 +1,6 @@
 package com.kenvix.utils.android.preprocessor;
 
-import com.kenvix.utils.android.Environment;
+import com.kenvix.utils.android.EnvConfig;
 import com.kenvix.utils.android.annotation.ViewAutoLoad;
 import com.kenvix.utils.tools.StringTools;
 import com.squareup.javapoet.ClassName;
@@ -38,7 +38,7 @@ public class ViewPreprocessor extends BasePreprocessor {
         List<MethodSpec> methods = new LinkedList<>();
 
         getMethodBuffer().forEach((name, builderList) ->
-                builderList.forEach(methodBuilder -> methods.add(methodBuilder.build()))
+                builderList.forEach(methodBuilder -> methods.add(methodBuilder.addStatement("return").build()))
         );
 
         TypeSpec viewToolset = TypeSpec.classBuilder("ViewToolset")
@@ -70,7 +70,7 @@ public class ViewPreprocessor extends BasePreprocessor {
                 List<MethodSpec.Builder> builders = getMethodBuilder(targetClassFullName, targetClass);
                 String RMemberName = StringTools.convertUppercaseLetterToUnderlinedLowercaseLetter(annotatedElement.getSimpleName().toString());
                 Name fieldVarName = annotatedElement.getSimpleName();
-                ClassName RId =  ClassName.get(Environment.TargetAppPackage, "R", "id");
+                ClassName RId =  ClassName.get(EnvConfig.TargetAppPackage, "R", "id");
 
                 final boolean generateCodeForActivityClass = targetClassFullName.endsWith("Activity");
 

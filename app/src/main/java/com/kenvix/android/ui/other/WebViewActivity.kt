@@ -8,13 +8,16 @@ package com.kenvix.android.ui.other
 
 import android.app.Activity
 import android.content.Intent
+import android.content.res.Resources
 import android.os.Bundle
 import android.webkit.WebView
-import com.kenvix.utils.android.annotation.ViewAutoLoad
-import com.kenvix.clipboardsync.R
+import com.kenvix.android.ApplicationEnvironment
+import com.kenvix.utils.android.annotation.AutoLoadOption
 import com.kenvix.android.ui.base.BaseActivity
 import com.kenvix.android.utils.WebViewInitializer
+import com.kenvix.utils.android.annotation.ViewAutoLoad
 
+@AutoLoadOption(enabled = true)
 class WebViewActivity : BaseActivity() {
     @ViewAutoLoad lateinit var webViewCore: WebView
     lateinit var webViewInitializer: WebViewInitializer
@@ -25,8 +28,8 @@ class WebViewActivity : BaseActivity() {
         webViewInitializer.setupWithCommonConfig(intent.getStringExtra("url"))
     }
 
-    override fun getBaseLayout(): Int = R.layout.activity_webview
-    override fun getBaseContainer(): Int = R.id.web_view_container
+    override fun getBaseLayout(): Int = ApplicationEnvironment.getAppResourceIdentifier("activity_webview", "layout")
+    override fun getBaseContainer(): Int = ApplicationEnvironment.getAppResourceIdentifier("web_view_container", "id")
 
     companion object Info {
         /**

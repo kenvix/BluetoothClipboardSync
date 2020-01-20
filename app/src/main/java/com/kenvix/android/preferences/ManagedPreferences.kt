@@ -9,7 +9,6 @@ package com.kenvix.android.preferences
 import android.content.Context
 import androidx.preference.PreferenceManager
 import com.kenvix.android.ApplicationEnvironment
-import com.kenvix.clipboardsync.preferences.MainPreferences
 import kotlin.reflect.KProperty
 
 
@@ -50,8 +49,8 @@ open class ManagedPreferences(val name: String, val mode: Int = Context.MODE_PRI
     }
 
     fun applyToPreferenceManager(manager: PreferenceManager) {
-        manager.sharedPreferencesName = MainPreferences.name
-        manager.sharedPreferencesMode = MainPreferences.mode
+        manager.sharedPreferencesName = this.name
+        manager.sharedPreferencesMode = this.mode
     }
 
     interface DelegatedPreference<T> {

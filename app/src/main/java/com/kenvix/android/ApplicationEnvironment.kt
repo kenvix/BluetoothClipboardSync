@@ -10,6 +10,7 @@ import androidx.annotation.NonNull
 import com.kenvix.utils.log.Logging
 import com.kenvix.android.utils.AndroidLoggingHandler
 import com.kenvix.clipboardsync.BuildConfig
+import com.kenvix.utils.android.EnvConfig
 import com.kenvix.utils.log.LoggingOutputStream
 import okhttp3.Cache
 import okhttp3.OkHttpClient
@@ -55,6 +56,11 @@ class ApplicationEnvironment : Application(), Logging {
 
             okHttpClientBuilder.cache(Cache(cacheDir, ApplicationProperties.OkHttpClientCacheSize))
             okHttpClientBuilder.build()
+        }
+
+        @JvmStatic
+        fun getAppResourceIdentifier(name: String, type: String): Int {
+            return appContext.resources.getIdentifier(name, type, EnvConfig.TargetAppPackage)
         }
 
         @JvmStatic

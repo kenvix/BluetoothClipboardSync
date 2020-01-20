@@ -1,6 +1,6 @@
 package com.kenvix.utils.android.preprocessor;
 
-import com.kenvix.utils.android.Environment;
+import com.kenvix.utils.android.EnvConfig;
 import com.kenvix.utils.android.annotation.ErrorPrompt;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.JavaFile;
@@ -116,7 +116,7 @@ public abstract class BasePreprocessor extends AbstractProcessor {
         Class[] supportedAnnotations = getSupportedAnnotations();
 
         for (Element classElement : rootElements) {
-            if(classElement.toString().startsWith(Environment.TargetAppPackage)) {
+            if(shouldProcess(classElement.toString())) {
                 List<? extends Element> enclosedElements = classElement.getEnclosedElements();
 
                 for(Element enclosedElement : enclosedElements) {
@@ -140,6 +140,19 @@ public abstract class BasePreprocessor extends AbstractProcessor {
         return onProcess(tasks, annotations, roundEnv) && (!roundEnv.processingOver() || onProcessingOver(tasks, annotations, roundEnv));
     }
 
+    protected boolean shouldProcess(String packagePrefix) {
+        if (packagePrefix.startsWith(EnvConfig.TargetAppPackage))
+            return true;
+
+        for (String prefix : EnvConfig.ExtendedProcessPackages) {
+            if (packagePrefix.startsWith(prefix)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     @Override
     public final Set<String> getSupportedAnnotationTypes() {
         //Arrays.stream(getSupportedAnnotations()).forEach(annotationClass -> messager.printMessage(Diagnostic.Kind.NOTE, annotationClass.getCanonicalName()));
@@ -155,7 +168,7 @@ public abstract class BasePreprocessor extends AbstractProcessor {
     }
 
     protected final JavaFile.Builder getOutputJavaFileBuilder(TypeSpec className) {
-        return JavaFile.builder(Environment.TargetAppPackage + ".generated", className)
+        return JavaFile.builder(EnvConfig.TargetAppPackage + ".generated", className)
                 .addFileComment(getFileHeader());
     }
 

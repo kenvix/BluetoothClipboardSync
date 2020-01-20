@@ -5,7 +5,6 @@ import android.view.View
 import com.kenvix.utils.android.PreprocessorName
 import com.kenvix.utils.log.Logging
 import com.kenvix.android.ApplicationEnvironment
-import com.kenvix.clipboardsync.R
 import java.lang.reflect.InvocationTargetException
 
 object Invoker : Logging {
@@ -69,7 +68,7 @@ object Invoker : Logging {
         return try {
             formChecker.getMethod(PreprocessorName.getFormEmptyCheckerMethodName(targetRaw.javaClass.canonicalName), String::class.java, Any::class.java)
                     .invoke(null,
-                        getString(R.string.error_field_required), targetRaw)
+                        getString(ApplicationEnvironment.getAppResourceIdentifier("error_field_required", "string")), targetRaw)
             true
         } catch (ex: Exception) {
             logger.severe("No such form checker generated: " + ex.message)
